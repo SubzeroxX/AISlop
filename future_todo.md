@@ -31,7 +31,6 @@ The current implementation is a solid proof-of-concept, but to move towards a pr
     public interface ITool
     {
         string Name { get; }
-        string Description { get; } // Useful for the AI prompt
         Task<string> ExecuteAsync(Dictionary<string, string> args, ToolExecutionContext context);
     }
     

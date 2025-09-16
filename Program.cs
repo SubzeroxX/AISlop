@@ -1,4 +1,5 @@
 ﻿using AISlop;
+using System.Reflection;
 QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
 Config.LoadConfig();
 
@@ -14,10 +15,14 @@ if (Config.Settings.generate_log)
 }
 
 int flags = 0;
-if (Config.Settings.display_thought)
-    flags |= (int)ProcessingState.StreamingThought;
-if (Config.Settings.display_toolcall)
-    flags |= (int)ProcessingState.StreamingToolCalls;
+flags |= (Config.Settings.display_thought ? (int)ProcessingState.StreamingThought : 0);
+flags |= (Config.Settings.display_toolcall ? (int)ProcessingState.StreamingToolCalls : 0);
 
-var agentHandler = new AgentHandler(Config.Settings.model_name, flags);
+var tools = Assembly.GetExecutingAssembly()
+    .GetTypes()
+    .Where(t => !t.IsAbstract && !t.IsInterface && typeof(ITool).IsAssignableFrom(t))
+    .Select(t => (ITool)Activator.CreateInstance(t)!)
+    .ToList();
+
+var agentHandler = new AgentHandler(tools, new AIWrapper(Config.Settings.model_name, flags));
 await agentHandler.RunAsync(taskString);

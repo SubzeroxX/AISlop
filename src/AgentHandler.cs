@@ -8,44 +8,19 @@ namespace AISlop
 {
     public class AgentHandler
     {
-        private readonly Tools _tools;
         private readonly AIWrapper _agent;
         private string _cwd = "environment";
         private bool _agentRunning = true;
-        private readonly Dictionary<string, Func<Dictionary<string, string>, Task<string>>> _toolHandler;
+        private readonly Dictionary<string, ITool> _tools;
 
         /// <summary>
         /// Initializes the Tools, Agent, and a ToolHandler for this instance
         /// </summary>
         /// <param name="modelName">Ollama model name</param>
-        public AgentHandler(string modelName, int streamingState = (int)ProcessingState.StreamingThought)
+        public AgentHandler(IEnumerable<ITool> availableTools, AIWrapper wrapper)
         {
-            _tools = new(_cwd);
-            _agent = new(modelName, streamingState);
-            _toolHandler = new()
-        {
-            // --- SYNCHRONOUS TOOLS (Wrapped in Task.FromResult) ---
-            { "createdirectory", args => Task.FromResult(_tools.CreateDirectory(args.GetValueOrDefault("dirname"), _cwd)) },
-            { "createfile", args => Task.FromResult(_tools.CreateFile(args.GetValueOrDefault("filename"), args.GetValueOrDefault("content"), _cwd)) },
-            { "readfile", args => Task.FromResult(_tools.ReadFile(args.GetValueOrDefault("filename"), _cwd)) },
-            { "writefile", args => Task.FromResult(_tools.OverwriteFile(args.GetValueOrDefault("filename"), args.GetValueOrDefault("content"), _cwd)) },
-            { "listdirectory", args => Task.FromResult(_tools.ListDirectory(_cwd))},
-            { "changedirectory", args => Task.FromResult(_tools.OpenFolder(args.GetValueOrDefault("dirname"), ref _cwd)) },
-            { "taskdone", args =>
-                {
-                    _agentRunning = false;
-                    return Task.FromResult(_tools.TaskDone(args.GetValueOrDefault("message")));
-                }
-            },
-            { "askuser", args => Task.FromResult(_tools.AskUser(args.GetValueOrDefault("question"))) },
-            { "readtextfrompdf", args => Task.FromResult(_tools.ReadTextFromPDF(args.GetValueOrDefault("filename"), _cwd)) },
-            { "executeterminal", args => Task.FromResult($"Command used: {args.GetValueOrDefault("command")}. Output: {_tools.ExecuteTerminal(args.GetValueOrDefault("command"), _cwd)}") },
-            { "createpdffile", args => Task.FromResult(_tools.CreatePdfFile(args.GetValueOrDefault("filename"), args.GetValueOrDefault("markdown_content"), _cwd)) },
-
-            // --- ASYNCHRONOUS TOOLS (Return the Task directly) ---
-            { "websearch", args => _tools.WebSearch(args.GetValueOrDefault("query")) },
-            { "gettextfromwebpage", args => _tools.GetTextFromWebPage(args.GetValueOrDefault("url")) }
-        };
+            _agent = wrapper;
+            _tools = availableTools.ToDictionary(t => t.Name.ToLowerInvariant());
         }
         /// <summary>
         /// Main function of the agent. Handles the recursion
@@ -103,13 +78,17 @@ namespace AISlop
         private async Task<string> ExecuteTool(IEnumerable<Parser.Command> toolcalls)
         {
             StringBuilder sb = new();
+            string currentToolName = "";
             try
             {
                 foreach (var singleCall in toolcalls)
                 {
-                    if (_toolHandler.TryGetValue(singleCall.Tool.ToLower(), out var func))
+                    currentToolName = singleCall.Tool;
+                    if (_tools.TryGetValue(singleCall.Tool.ToLowerInvariant(), out var tool))
                     {
-                        string result = await func(singleCall.Args);
+                        var context = new ToolExecutionContext { CurrentWorkingDirectory = _cwd };
+                        string result = await tool.ExecuteAsync(singleCall.Args, context);
+                        _cwd = context.CurrentWorkingDirectory; // Update CWD if changed by the tool
                         sb.AppendLine($"{singleCall.Tool} output: {result}");
                     }
                     else
@@ -120,7 +99,7 @@ namespace AISlop
             }
             catch (Exception ex)
             {
-                sb.AppendLine($"An error occurred during tool execution: {ex.Message}");
+                sb.AppendLine($"An exception occurred during {currentToolName} execution: {ex.Message}");
             }
 
             return sb.ToString();

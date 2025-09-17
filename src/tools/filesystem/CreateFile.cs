@@ -9,14 +9,14 @@ namespace AISlop
         public string Name => "createfile";
         public Task<string> ExecuteAsync(Dictionary<string, string> args, ToolExecutionContext context)
         {
-            return FileCreation(
+            return _CreateFile(
                 args.GetValueOrDefault("filename"),
                 args.GetValueOrDefault("content"),
                 context.CurrentWorkingDirectory
                 );
         }
 
-        private Task<string> FileCreation(string filename, string content, string cwd)
+        private Task<string> _CreateFile(string filename, string content, string cwd)
         {
             string filePath = Path.Combine(cwd, filename);
             if (File.Exists(filePath))

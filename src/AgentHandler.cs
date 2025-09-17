@@ -20,7 +20,7 @@ namespace AISlop
         public AgentHandler(IEnumerable<ITool> availableTools, AIWrapper wrapper)
         {
             _agent = wrapper;
-            _tools = availableTools.ToDictionary(t => t.Name.ToLowerInvariant());
+            _tools = availableTools.ToDictionary(t => t.Name.ToLower());
         }
         /// <summary>
         /// Main function of the agent. Handles the recursion
@@ -84,11 +84,17 @@ namespace AISlop
                 foreach (var singleCall in toolcalls)
                 {
                     currentToolName = singleCall.Tool;
-                    if (_tools.TryGetValue(singleCall.Tool.ToLowerInvariant(), out var tool))
+                    if (_tools.TryGetValue(singleCall.Tool.ToLower(), out var tool))
                     {
                         var context = new ToolExecutionContext { CurrentWorkingDirectory = _cwd };
                         string result = await tool.ExecuteAsync(singleCall.Args, context);
-                        _cwd = context.CurrentWorkingDirectory; // Update CWD if changed by the tool
+                        _cwd = context.CurrentWorkingDirectory;
+                        if (currentToolName.ToLower() == "taskdone")
+                        {
+                            _agentRunning = false;
+                            break;
+                        }    
+
                         sb.AppendLine($"{singleCall.Tool} output: {result}");
                     }
                     else

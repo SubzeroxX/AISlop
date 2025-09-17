@@ -8,7 +8,7 @@ This is CENSORED's personal portfolio website, showcasing his skills, experience
 
 - **Interactive Typing Effect**: The hero section displays a dynamic typing animation cycling through various professional titles.
 - **Light/Dark Theme Toggle**: Users can switch between light and dark modes with persistent preference saved in localStorage.
-- **Smooth Navigation**: All internal links use smooth scrolling for a seamless user experience.
+- **Smooth Navigation**: All public links use smooth scrolling for a seamless user experience.
 - **Responsive Design**: The site adapts to different screen sizes with mobile-friendly layout.
 - **Animated Sections**: Sections such as skills, stats, and projects use CSS animations to create visual interest.
 - **Interactive Project Cards**: Hover effects provide visual feedback when users interact with project cards.

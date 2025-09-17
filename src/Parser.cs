@@ -56,7 +56,7 @@ namespace AISlop
             try
             {
                 var aiResponse = JsonSerializer.Deserialize<AIResponse>(jsonCommand);
-                if (aiResponse is null || aiResponse.ToolCalls.Count() == 0)
+                if (aiResponse?.ToolCalls?.Count() is null or 0)
                     return new List<Command>() { new() { Error = "Exception: No jsons found in the response!" } };
 
                 return aiResponse.ToolCalls
